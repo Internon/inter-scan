@@ -141,8 +141,6 @@ def api_search(url):
         time.sleep(random.uniform(0.5, 1.5))
         r = requests.get(url, headers=headers)
         json = r.json()
-        print(str(token))
-        print(str(r.headers))
         if int(r.headers["X-RateLimit-Remaining"]) <= 1:
             seconds = r.headers["X-RateLimit-Reset"]
             end_datetime = datetime.datetime.fromtimestamp(int(seconds))
