@@ -1,0 +1,52 @@
+module=$(echo $0 | awk -F '/' '{print $NF}' | sed "s/\.[^\.]*$//g")
+SUB_MODULES_FOLDER=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../sub-modules
+target=$1
+burpjar=/opt/BurpSuitePro/burpsuite_pro.jar
+javapath=/opt/BurpSuitePro/jre/bin/java
+apikey=3XpCiAVXHcTLMY0LLrXJ48ZqpnrbraaM
+userConfigFile=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../conf/userGenericOptions.json
+#Important to configure a Resource Pool on the project file to change the default configuration and use more threads and more thorought config
+projectfolder=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../conf/burp-project/
+if [[ ! -d $projectfolder ]]; then
+	mkdir $projectfolder
+fi	
+resultsfolder=$2$(echo $target | sed 's/\//-/g')/$3/$(echo $module | sed 's/^[0-9]*_//g')
+mkdir $resultsfolder
+outputfolder=$resultsfolder/ScanOutput
+mkdir $outputfolder
+echo "Generating config file"
+echo "{
+    \"sites\" : [" > $resultsfolder/config.json
+count=0
+for url in $(cat $resultsfolder/../tmp/full_urls_with_params.txt)
+do 
+	if [ $count == 0 ]; then
+		count=1
+	else
+		echo "," >> $resultsfolder/config.json
+	fi
+	echo "{
+        \"scanURL\" : \"$url\",
+        \"project\" : \"$projectfolder/scan-project.burp\",
+        \"apikey\" : \"$apikey\",
+	\"userburpfile\" : \"$userConfigFile\"
+}" >> $resultsfolder/config.json
+done
+echo "
+    ],
+    \"burpConfigs\" : [{
+        \"memory\" : \"2048m\",
+        \"headless\" : \"true\",
+	\"java\" : \"$javapath\",
+        \"burpJar\" : \"$burpjar\",
+        \"retry\" : 10,
+        \"logPath\" : \"$outputfolder\",
+        \"logfileName\" : \"SimpleAutoBurp\",
+        \"loglevel\" : \"info\",
+        \"ScanOutput\" : \"$outputfolder\"
+      }
+      ]
+}" >> $resultsfolder/config.json
+python $SUB_MODULES_FOLDER/SimpleAutoBurp/SimpleAutoBurp.py $resultsfolder/config.json
+cp $projectfolder/scan-project.burp $resultsfolder/scan-project-$(echo $target | sed 's/\//-/g').burp
+cp $projectfolder/2022-02-15-scan-project-backup.burp $projectfolder/scan-project.burp
