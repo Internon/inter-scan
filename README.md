@@ -36,14 +36,14 @@ Usage: /usr/bin/inter-scan [OPTIONS]
 ## Speed (-s)
 all
 
-quick
+quick (2)
 
-slow
+slow (3)
 
-slowest
+slowest (4)
 
 ## Scan type (-m)
-module based (number)
+module based (number of the module)
 
 fullscan (all)
 
