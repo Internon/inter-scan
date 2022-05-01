@@ -66,6 +66,7 @@ targetscan (all with option -e)
 
 ## TO-DO
 - Add a parameter to exclude the plugins execution
-- Screenshot on the results of Github dorking
+- Work with github submodules to add the sub-modules folder when git clone
 - Perform an installer file 
 - Perform a docker
+
