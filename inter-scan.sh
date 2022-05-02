@@ -71,7 +71,7 @@ function loadmodules(){
 	done
 }
 function loadplugins(){
-        for file in $(ls -r $PLUGINS_FOLDER ); do
+        for file in $(ls $PLUGINS_FOLDER ); do
                 plugins_dict[$(echo $file | sed "s/\.[^\.]*$//g")]=$file
         done
 }
