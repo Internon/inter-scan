@@ -8,15 +8,17 @@ function initvariables(){
 	MODULES_FOLDER=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/src/modules/
 	PLUGINS_FOLDER=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/src/plugins/
 	INTEREXCLUDEDOMAINS=0
+	INTEREXECUTEPLUGINS=0
         BlueColor="\e[96m"
         OrangeColor="\e[33m"
         ResetColor="\e[0m"
         RedColor="\e[91m"
         GreenColor="\e[32m"
 	PurpleColor="\e[35m"
+	INTERTHREADS=20
 }
 function foldervariables(){
-	WORKING_FOLDER=$(pwd)/inter-output-scan/
+	WORKING_FOLDER=$(pwd)/inter-out/
 	for target in $(cat $INTERTARGETFILE); do
 		if [ ! -d "$WORKING_FOLDER" ]; then
 			mkdir -p $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp"
@@ -51,18 +53,20 @@ function programhelp(){
 	banner
         echo "Usage: $0 [OPTIONS]"
         echo "  Options:"
-        echo "          -T {file with targets by line}"
-        echo "          -t {IP or IP/CIDR or domain}"
+        echo "          -I {file with targets by line}"
+        echo "          -i {IP or IP/CIDR or domain}"
+	echo "          -t {} number of threads to use in all modules (Default 20)"
 	echo "          -m {all/MODULE-NUMBER (Check the number on -l parameter)}"
 	echo "          -s {all/SPEED-NUMBER} (Check the number on -l parameter) Important: slower is thorough"
 	echo "          -l {any} List modules and speed"
 	echo "          -i Interactive execution"
 	echo "          -c {company name} for extra recon"
+	echo "          -p execute plugins"
 	echo "          -e exclude domain recon, just perform the target"
         echo "  Examples:"
-        echo "          $0 -t 127.0.0.1 -s all -m all -c {COMPANY}"
+        echo "          $0 -i 127.0.0.1 -s all -m all -c {COMPANY} -t 30"
 	echo "          $0 -l any"
-        echo "          $0 -T targets.txt -m all -c {COMPANY}"
+        echo "          $0 -I targets.txt -m all -c {COMPANY} -t 30"
 
 }
 function loadmodules(){
@@ -161,14 +165,10 @@ function validateaction(){
 
 }
 function targetscan(){
-	echo "[INFO] - We are executing the following scripts in this order:"
-        echo "   1 - port_recon.sh"
+	echo "[INFO] - We are executing the target scan"
         modules_association_fullscan[1]="port_recon.sh"
-        echo "   2 - vulnerability_recon.sh"
         modules_association_fullscan[2]="vulnerability_recon.sh"
-        echo "   3 - make_documentation.sh"
         modules_association_fullscan[3]="make_documentation.sh"
-        echo "   4 - web_recon.sh"
         modules_association_fullscan[4]="web_recon.sh"
         execution_num=5
         for key in "${!modules_dict[@]}"; do
@@ -224,31 +224,30 @@ function targetscan(){
                         	execute_module ${modules_association_fullscan[$module_number]} $speed $target
                 	done
         	done
-        	for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
-                	echo "EXECUTING SPEED "$speed
-                	for key in "${!plugins_dict[@]}"; do
-                        	execute_plugin ${plugins_dict[$key]} $speed $target
-                	done
-        	done
+		if [[ $INTEREXECUTEPLUGINS != 0 ]]
+		then
+        		for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
+                		echo "EXECUTING SPEED "$speed
+                		for key in "${!plugins_dict[@]}"; do
+                        		execute_plugin ${plugins_dict[$key]} $speed $target
+                		done
+        		done
+		else
+			echo "Excluding plugins execution"
+		fi
 	done
 }
 
 function fullscan(){
-	echo "[INFO] - We are executing the following scripts in this order:"
-	echo "   1 - domain_recon.sh"
+	echo "[INFO] - We are executing the full scan"
 	modules_association_fullscan[1]="domain_recon.sh"
-	echo "   2 - port_recon.sh"
 	modules_association_fullscan[2]="port_recon.sh"
-	echo "   3 - vulnerability_recon.sh"
 	modules_association_fullscan[3]="vulnerability_recon.sh"
-	echo "   4 - make_documentation.sh"
 	modules_association_fullscan[4]="make_documentation.sh"
-	echo "   5 - web_recon.sh"
 	modules_association_fullscan[5]="web_recon.sh"
 	execution_num=6
 	for key in "${!modules_dict[@]}"; do
 		if [[ ! " ${modules_association_fullscan[*]} " =~ " ${modules_dict[$key]} " ]] && [[ "$key" != "make_folder_structure" ]]; then
-			echo "   $execution_num - ${modules_dict[$key]}"
 			modules_association_fullscan[$execution_num]=${modules_dict[$key]}
 			execution_num=$(($execution_num+1))
 		fi
@@ -300,12 +299,17 @@ function fullscan(){
 				execute_module ${modules_association_fullscan[$module_number]} $speed $target
 			done
 		done
-		for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
-                	echo "EXECUTING SPEED "$speed
-                	for key in "${!plugins_dict[@]}"; do
-                        	execute_plugin ${plugins_dict[$key]} $speed $target
-                	done
-        	done
+		if [[ $INTEREXECUTEPLUGINS != 0 ]]
+		then
+			for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
+                		echo "EXECUTING SPEED "$speed
+                		for key in "${!plugins_dict[@]}"; do
+                        		execute_plugin ${plugins_dict[$key]} $speed $target
+                		done
+        		done
+		else
+			echo "Excluding plugins executions"
+		fi
 	done
 }
 function execute_module(){
@@ -510,17 +514,17 @@ initvariables
 loadmodules
 loadplugins
 associatemodulesandplugins
-while getopts "h:T:t:w:m:s:i:l:c:e" OPTION
+while getopts "h:I:i:w:m:s:i:l:c:e:t:p" OPTION
 	do
 		case $OPTION in
 			h)
 				programhelp
 				exit 1
 		   		;;
-	       		T)
+	       		I)
 		   		INTERTARGETFILE=$OPTARG
 		   		;;
-	       		t)
+	       		i)
 		   		INTERTARGET=$OPTARG
 		   		;;
 			m)
@@ -537,11 +541,17 @@ while getopts "h:T:t:w:m:s:i:l:c:e" OPTION
 				listmodules
 				exit 1
 				;;
+			p)
+				INTEREXECUTEPLUGINS=1
+				;;
 			e)
 				INTEREXCLUDEDOMAINS=1
 				;;
 			c)
 				INTERCOMPANYNAME=$OPTARG
+				;;
+			t)
+				INTERTHREADS=$OPTARG
 				;;
 			*)
 				programhelp
@@ -555,7 +565,7 @@ if [[ -z $INTERACTIVE ]] && ([[ ! -z $INTERTARGET ]] || [[ ! -z $INTERTARGETFILE
         re2='^[A-Za-z0-9\-\.]+'
 	if [[ ! -z $INTERTARGETFILE ]]; then
                if [ ! -f $INTERTARGETFILE ]; then
-                       echo -e $RedColor"ERROR:   Parameter -T , target file not found"$ResetColor
+                       echo -e $RedColor"ERROR:   Parameter -I , target file not found"$ResetColor
                        programhelp
                        exit 1
 	       fi
@@ -564,7 +574,7 @@ if [[ -z $INTERACTIVE ]] && ([[ ! -z $INTERTARGET ]] || [[ ! -z $INTERTARGETFILE
 		echo $INTERTARGET > $(pwd)/target.txt
 		INTERTARGETFILE=$(pwd)/target.txt
                 if [[ ! "$INTERTARGET" =~ $re ]] && [[ ! "$INTERTARGET" =~ $re2 ]]; then
-                        echo -e $RedColor"ERROR:    Parameter -t should be an IP, IP/CIDR or domain"$ResetColor
+                        echo -e $RedColor"ERROR:    Parameter -i should be an IP, IP/CIDR or domain"$ResetColor
                         programhelp
 			exit
 		fi
@@ -593,6 +603,11 @@ if [[ -z $INTERACTIVE ]] && ([[ ! -z $INTERTARGET ]] || [[ ! -z $INTERTARGETFILE
 			endexecution=`date +%s`
 			displaytime `expr $endexecution - $startexecution`
 			echo -e $PurpleColor"[INFO] - Execution time of the file:$timecalc."$ResetColor
+			for target in $(cat $INTERTARGETFILE); do
+                		for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
+                        		echo $INTERTHREADS > $WORKING_FOLDER$(echo $target | sed 's/\//-/g')/$speed/tmp/scan_threads.txt
+                		done
+        		done
 			if [[ $INTEREXCLUDEDOMAINS == 0 ]]; then
 				fullscan
 			else
@@ -609,6 +624,7 @@ if [[ -z $INTERACTIVE ]] && ([[ ! -z $INTERTARGET ]] || [[ ! -z $INTERTARGETFILE
 				echo -e $PurpleColor"[INFO] - Execution time of the file:$timecalc."$ResetColor
 				for target in $(cat $INTERTARGETFILE); do
 					for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
+						echo $INTERTHREADS > $WORKING_FOLDER$(echo $target | sed 's/\//-/g')/$speed/tmp/scan_threads.txt
 						echo $INTERCOMPANYNAME > $WORKING_FOLDER$(echo $target | sed 's/\//-/g')/$speed/tmp/company_name.txt
 						echo "EXECUTING SPEED $speed"
 						if [[ " ${plugins_dict[*]} " =~ " ${modules_association[$INTERMODULE]} " ]]; then
@@ -624,6 +640,17 @@ if [[ -z $INTERACTIVE ]] && ([[ ! -z $INTERTARGET ]] || [[ ! -z $INTERTARGETFILE
 		fi
 	else
 		echo -e $OrangeColor"[WARNING] - No module parameter found, using default module parameter all"$ResetColor
+		echo -e $GreenColor"[INFO] - Executing file "$MODULES_FOLDER"make_folder_structure.sh"$ResetColor
+		startexecution=`date +%s`
+		$MODULES_FOLDER"make_folder_structure.sh" $INTERTARGETFILE $WORKING_FOLDER
+		endexecution=`date +%s`
+		displaytime `expr $endexecution - $startexecution`
+		echo -e $PurpleColor"[INFO] - Execution time of the file:$timecalc."$ResetColor
+		for target in $(cat $INTERTARGETFILE); do
+			for speed in $(cat $WORKING_FOLDER$(echo $target | sed 's/\//-/g')"/tmp/scan_speed.txt"); do
+				echo $INTERTHREADS > $WORKING_FOLDER$(echo $target | sed 's/\//-/g')/$speed/tmp/scan_threads.txt
+			done
+		done
 		if [[ $INTEREXCLUDEDOMAINS == 0 ]]; then
 			fullscan
 		else

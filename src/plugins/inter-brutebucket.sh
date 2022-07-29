@@ -50,6 +50,6 @@ printf "${GREEN}Starting making the test on the buckets created with our created
 for service in $services
 do
 	echo "Checking on service "$service
-	python3.10 $SUB_MODULES_FOLDER/aws-extender-cli/aws_extender_cli.py -f $resultsfolder/customBucketsWordlist.txt -s $service > $resultsfolder/bucket-results-$service.txt
+	$SUB_MODULES_FOLDER/aws-extender-cli/aws_extender_cli.py -f $resultsfolder/customBucketsWordlist.txt -s $service > $resultsfolder/bucket-results-$service.txt
 done
 printf "${GREEN}Finished the script, please check $resultsfolder/bucket-results-*.txt file${NC}\n"

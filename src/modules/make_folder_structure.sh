@@ -14,7 +14,7 @@ do
 			if [[ -z $module ]]; then
 				echo "Folder $(echo $target | sed 's/\//-/g') with speed $SPEED exist, moving it to old folder and creating the new one"
 				datenow=`date +%Y-%m-%d-%H-%M-%S`
-				mkdir $WORKING_FOLDER"old/"$(echo $target | sed 's/\//-/g')"_"$datenow
+				mkdir -p $WORKING_FOLDER"old/"$(echo $target | sed 's/\//-/g')"_"$datenow/
 				mv $WORKING_FOLDER$(echo $target | sed 's/\//-/g')/$SPEED $WORKING_FOLDER"old/"$(echo $target | sed 's/\//-/g')"_"$datenow/$SPEED
 				mkdir -p $WORKING_FOLDER$(echo $target | sed 's/\//-/g')/$SPEED/tmp
 			else

@@ -130,7 +130,7 @@
                     "name":"OpenAPI Parser",
                     "output":"ui"
                 },
-		{
+                {
                     "errors":"ui",
                     "extension_file":"/home/kali/Desktop/tools/collaboratorplusplus/CollaboratorPlusPlus-1.0.2.jar",
                     "extension_type":"java",
@@ -372,7 +372,7 @@
             "embedded_browser":{
                 "allow_saving_browser_settings":true
             },
-            "enable_proxy_interception_at_startup":"always",
+            "enable_proxy_interception_at_startup":"never",
             "exceptions_log_directory":"",
             "hotkeys":[
                 {
